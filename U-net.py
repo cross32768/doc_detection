@@ -49,16 +49,16 @@ if use_gpu:
 # directory settings
 # data directory
 root_dir = '../../data/200003076/'
-image_dir = root_dir + 'images_resized_1024/'
-label_dir = root_dir + 'labels_resized_1024/one_x0.8/'
+image_dir = root_dir + 'images_resized_512/'
+label_dir = root_dir + 'labels_resized_512/one_x0.8/'
 
 # directory to put generated images
-output_dir = root_dir + 'output_resized_1024(croped_512)_one_x0.8/'
+output_dir = root_dir + 'output_resized_512_one_x0.8/'
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
     
 # directory to save state_dict and loss.npy
-save_dir = root_dir + 'save_resized_1024(croped_512)_one_x0.8/'
+save_dir = root_dir + 'save_resized_512_one_x0.8/'
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
 
@@ -113,9 +113,11 @@ class Add_dim:
 class Tofloat:
     def __call__(self, tensor):
         return tensor.float()
-    
-tf_image = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor(), Normalize()])
-tf_label = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor()])
+
+tf_image = transforms.ToTensor()
+tf_label = transforms.ToTensor()  
+# tf_image = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor()])
+# tf_label = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor()])
 
 
 # In[5]:
@@ -181,7 +183,7 @@ class Upsample(nn.Module):
         super(Upsample, self).__init__()
         self.tc = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
         self.bn = nn.BatchNorm2d(out_channels)
-        self.dr = nn.Dropout(0.5)
+        self.dr = nn.Dropout(0.3)
         self.rl = nn.ReLU()
         
         self.use_batchnorm = use_batchnorm
@@ -384,7 +386,7 @@ def validation(data_loader, epoch):
 # In[21]:
 
 
-n_epochs = 100
+n_epochs = 30
 train_loss_list = []
 validation_loss_list = []
 
