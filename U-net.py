@@ -35,7 +35,7 @@ print('Is GPU available:', use_gpu)
 device = torch.device('cuda' if use_gpu else 'cpu')
 
 # batchsize
-batchsize = 5
+batchsize = 16
 
 # imagesize for random crop
 imagesize = 256
@@ -53,12 +53,12 @@ image_dir = root_dir + 'images_resized_512/'
 label_dir = root_dir + 'labels_resized_512/one_x0.8/'
 
 # directory to put generated images
-output_dir = root_dir + 'output_resized_512_one_x0.8/'
+output_dir = root_dir + 'output_resized_512(croped 256)_one_x0.8/'
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
     
 # directory to save state_dict and loss.npy
-save_dir = root_dir + 'save_resized_512_one_x0.8/'
+save_dir = root_dir + 'save_resized_512(croped 256)_one_x0.8/'
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
 
@@ -101,24 +101,9 @@ class MyDataset(Dataset):
 
 
 # define transform
-# Normalize [0~255] to [0~1]
-class Normalize:
-    def __call__(self, image):
-        return image / 255
-    
-class Add_dim:
-    def __call__(self, label):
-        return label.reshape(label.shape[0], label.shape[1], 1)
-    
-class Tofloat:
-    def __call__(self, tensor):
-        return tensor.float()
 
-tf_image = transforms.ToTensor()
-tf_label = transforms.ToTensor()  
-# tf_image = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor()])
-# tf_label = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor()])
-
+tf_image = transforms.Compose([transforms.RandomCrop(imagesize), transforms.ToTensor()])
+tf_label = transforms.Compose([transforms.RandomCrop(imagesize), transforms.ToTensor()])
 
 # In[5]:
 
@@ -139,7 +124,6 @@ print('The number of validation data:', len(validation_data))
 # make DataLoader
 train_loader = DataLoader(train_data, batch_size = batchsize, shuffle = True)
 validation_loader = DataLoader(validation_data, batch_size = batchsize, shuffle = True)
-
 
 # In[7]:
 
@@ -170,7 +154,6 @@ class Downsample(nn.Module):
         out = self.rl(out)
         
         return out
-
 
 # In[8]:
 
@@ -217,15 +200,14 @@ class U_net(nn.Module):
         
         # U-net encoder
         # default: kernel_size = 4, stride = 2, padding = 1, using batchnorm, no dropout
-        self.encoder1 = Downsample(  3,    64, use_batchnorm = False)   # out tensor size: (batchsize,   64, 256, 256)
-        self.encoder2 = Downsample( 64,   128)                          # out tensor size: (batchsize,  128, 128, 128)
-        self.encoder3 = Downsample(128,   256)                          # out tensor size: (batchsize,  256,  64,  64)
-        self.encoder4 = Downsample(256,   512)                          # out tensor size: (batchsize,  512,  32,  32)
-        self.encoder5 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,  16,  16)
-        self.encoder6 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,   8,   8)
-        self.encoder7 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,   4,   4)
-        self.encoder8 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,   2,   2)
-        self.encoder9 = Downsample(512,  1024, use_batchnorm = False)   # out tensor size: (batchsize, 1024,   1,   1)
+        self.encoder1 = Downsample(  3,    64, use_batchnorm = False)   # out tensor size: (batchsize,   64, 128, 128)
+        self.encoder2 = Downsample( 64,   128)                          # out tensor size: (batchsize,  128,  64,  64)
+        self.encoder3 = Downsample(128,   256)                          # out tensor size: (batchsize,  256,  32,  32)
+        self.encoder4 = Downsample(256,   512)                          # out tensor size: (batchsize,  512,  16,  16)
+        self.encoder5 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,   8,   8)
+        self.encoder6 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,   4,   3)
+        self.encoder7 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,   2,   2)
+        self.encoder8 = Downsample(512,  1024, use_batchnorm = False)   # out tensor size: (batchsize, 1024,   1,   1)
 
 
 
@@ -233,24 +215,21 @@ class U_net(nn.Module):
         # U-net decoder
         # default: kernel_size = 4, stride = 2, padding = 1, using batchnorm, no dropout
         self.decoder1 = Upsample(1024    , 1024, use_dropout = True)     # out tensor size: (batchsize, 1024,   2,   2)
-        self.decoder2 = Upsample(1024+512, 1024, use_dropout = False)     # out tensor size: (batchsize, 1024,   4,   4)
+        self.decoder2 = Upsample(1024+512, 1024, use_dropout = True)     # out tensor size: (batchsize, 1024,   4,   4)
         self.decoder3 = Upsample(1024+512, 1024, use_dropout = True)     # out tensor size: (batchsize, 1024,   8,   8)
         self.decoder4 = Upsample(1024+512, 1024)                         # out tensor size: (batchsize, 1024,  16,  16)
-        self.decoder5 = Upsample(1024+512, 1024, use_dropout = True)    # out tensor size: (batchsize, 1024,  32,  32)
-        self.decoder6 = Upsample(1024+512, 1024)                         # out tensor size: (batchsize, 1024,  64,  64)
-        self.decoder7 = Upsample(1024+256,  512)                         # out tensor size: (batchsize,  512, 128, 128)
-        self.decoder8 = Upsample( 512+128,  256, use_dropout = False)    # out tensor size: (batchsize,  256, 256, 256)
-        self.decoder9 = Upsample( 256+ 64,  128)                         # out tensor size: (batchsize,  128, 512, 512)
+        self.decoder5 = Upsample(1024+512, 1024, use_dropout = False)    # out tensor size: (batchsize, 1024,  32,  32)
+        self.decoder6 = Upsample(1024+256,  512)                         # out tensor size: (batchsize,  512,  64,  64)
+        self.decoder7 = Upsample( 512+128,  256)                         # out tensor size: (batchsize,  256, 128, 128)
+        self.decoder8 = Upsample( 256+ 64,  128, use_dropout = False)    # out tensor size: (batchsize,  128, 256, 256)
         
         # pointwise convolution to adjust channel with no image size change
-        self.decoder10 = nn.Sequential(
+        self.decoder9 = nn.Sequential(
                             nn.Conv2d(128, 64, kernel_size = 1, stride = 1, padding = 0),
                             nn.BatchNorm2d(64),
-                            # nn.Dropout(0.3),
                             nn.ReLU(),
                             nn.Conv2d(64, 32, kernel_size = 1, stride = 1, padding = 0),
                             nn.BatchNorm2d(32),
-                            # nn.Dropout(0.2),
                             nn.ReLU(),
                             nn.Conv2d(32, 1, kernel_size = 1, stride = 1, padding = 0),
                             nn.Sigmoid()
@@ -266,20 +245,18 @@ class U_net(nn.Module):
         out_encoder6 = self.encoder6(out_encoder5)
         out_encoder7 = self.encoder7(out_encoder6)
         out_encoder8 = self.encoder8(out_encoder7)
-        out_encoder9 = self.encoder9(out_encoder8)
         
         # decording part
-        out_decoder1 = self.decoder1(out_encoder9)
-        out_decoder2 = self.decoder2(torch.cat([out_decoder1, out_encoder8], dim = 1))
-        out_decoder3 = self.decoder3(torch.cat([out_decoder2, out_encoder7], dim = 1))
-        out_decoder4 = self.decoder4(torch.cat([out_decoder3, out_encoder6], dim = 1))
-        out_decoder5 = self.decoder5(torch.cat([out_decoder4, out_encoder5], dim = 1))
-        out_decoder6 = self.decoder6(torch.cat([out_decoder5, out_encoder4], dim = 1))
-        out_decoder7 = self.decoder7(torch.cat([out_decoder6, out_encoder3], dim = 1))
-        out_decoder8 = self.decoder8(torch.cat([out_decoder7, out_encoder2], dim = 1))
-        out_decoder9 = self.decoder9(torch.cat([out_decoder8, out_encoder1], dim = 1))
+        out_decoder1 = self.decoder1(out_encoder8)
+        out_decoder2 = self.decoder2(torch.cat([out_decoder1, out_encoder7], dim = 1))
+        out_decoder3 = self.decoder3(torch.cat([out_decoder2, out_encoder6], dim = 1))
+        out_decoder4 = self.decoder4(torch.cat([out_decoder3, out_encoder5], dim = 1))
+        out_decoder5 = self.decoder5(torch.cat([out_decoder4, out_encoder4], dim = 1))
+        out_decoder6 = self.decoder6(torch.cat([out_decoder5, out_encoder3], dim = 1))
+        out_decoder7 = self.decoder7(torch.cat([out_decoder6, out_encoder2], dim = 1))
+        out_decoder8 = self.decoder8(torch.cat([out_decoder7, out_encoder1], dim = 1))
         
-        out = self.decoder10(out_decoder9)
+        out = self.decoder9(out_decoder8)
         
         return out
 
@@ -386,7 +363,7 @@ def validation(data_loader, epoch):
 # In[21]:
 
 
-n_epochs = 200
+n_epochs = 50
 train_loss_list = []
 validation_loss_list = []
 
