@@ -152,7 +152,7 @@ class Downsample(nn.Module):
         super(Downsample, self).__init__()
         self.cv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
         self.bn = nn.BatchNorm2d(out_channels)
-        self.dr = nn.Dropout(0.5)
+        self.dr = nn.Dropout(0.4)
         self.rl = nn.LeakyReLU(0.2)
         
         self.use_batchnorm = use_batchnorm
@@ -183,7 +183,7 @@ class Upsample(nn.Module):
         super(Upsample, self).__init__()
         self.tc = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
         self.bn = nn.BatchNorm2d(out_channels)
-        self.dr = nn.Dropout(0.3)
+        self.dr = nn.Dropout(0.5)
         self.rl = nn.ReLU()
         
         self.use_batchnorm = use_batchnorm
@@ -236,11 +236,11 @@ class U_net(nn.Module):
         self.decoder2 = Upsample(1024+512, 1024, use_dropout = True)     # out tensor size: (batchsize, 1024,   4,   4)
         self.decoder3 = Upsample(1024+512, 1024, use_dropout = True)     # out tensor size: (batchsize, 1024,   8,   8)
         self.decoder4 = Upsample(1024+512, 1024)                         # out tensor size: (batchsize, 1024,  16,  16)
-        self.decoder5 = Upsample(1024+512, 1024, use_dropout = False)    # out tensor size: (batchsize, 1024,  32,  32)
+        self.decoder5 = Upsample(1024+512, 1024, use_dropout = True)     # out tensor size: (batchsize, 1024,  32,  32)
         self.decoder6 = Upsample(1024+512, 1024)                         # out tensor size: (batchsize, 1024,  64,  64)
-        self.decoder7 = Upsample(1024+256,  512)                         # out tensor size: (batchsize,  512, 128, 128)
+        self.decoder7 = Upsample(1024+256,  512, use_dropout = True)     # out tensor size: (batchsize,  512, 128, 128)
         self.decoder8 = Upsample( 512+128,  256, use_dropout = False)    # out tensor size: (batchsize,  256, 256, 256)
-        self.decoder9 = Upsample( 256+ 64,  128)                         # out tensor size: (batchsize,  128, 512, 512)
+        self.decoder9 = Upsample( 256+ 64,  128, use_dropout = False)    # out tensor size: (batchsize,  128, 512, 512)
         
         # pointwise convolution to adjust channel with no image size change
         self.decoder10 = nn.Sequential(
@@ -386,7 +386,7 @@ def validation(data_loader, epoch):
 # In[21]:
 
 
-n_epochs = 30
+n_epochs = 100
 train_loss_list = []
 validation_loss_list = []
 
