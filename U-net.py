@@ -7,6 +7,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from PIL import Image
 from skimage import io
 from sklearn.model_selection import train_test_split
 
@@ -48,16 +49,16 @@ if use_gpu:
 # directory settings
 # data directory
 root_dir = '../../data/200003076/'
-image_dir = root_dir + 'images_resized_512/'
-label_dir = root_dir + 'labels_resized_512/gaussian_0.05/'
+image_dir = root_dir + 'images_resized_1024/'
+label_dir = root_dir + 'labels_resized_1024/one_x0.8/'
 
 # directory to put generated images
-output_dir = root_dir + 'output_resized_512_gaussian_0.05/'
+output_dir = root_dir + 'output_resized_1024(croped_512)_one_x0.8/'
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
     
 # directory to save state_dict and loss.npy
-save_dir = root_dir + 'save_resized_512_gaussian_0.05/'
+save_dir = root_dir + 'save_resized_1024(croped_512)_one_x0.8/'
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
 
@@ -84,8 +85,8 @@ class MyDataset(Dataset):
         image_name = self.image_dir + self.image_list[idx]
         label_name = self.label_dir + self.label_list[idx]
         
-        image = io.imread(image_name)
-        label = io.imread(label_name)
+        image = Image.open(image_name) # io.imread(image_name)
+        label = Image.open(label_name) # io.imread(label_name)
         
         if self.transform_image:
             image = self.transform_image(image)
@@ -113,8 +114,8 @@ class Tofloat:
     def __call__(self, tensor):
         return tensor.float()
     
-tf_image = transforms.Compose([Normalize(), transforms.ToTensor(), Tofloat()])
-tf_label = transforms.Compose([Add_dim(), transforms.ToTensor(), Tofloat()])
+tf_image = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor(), Normalize()])
+tf_label = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor()])
 
 
 # In[5]:
@@ -149,7 +150,7 @@ class Downsample(nn.Module):
         super(Downsample, self).__init__()
         self.cv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
         self.bn = nn.BatchNorm2d(out_channels)
-        self.dr = nn.Dropout(0.3)
+        self.dr = nn.Dropout(0.5)
         self.rl = nn.LeakyReLU(0.2)
         
         self.use_batchnorm = use_batchnorm
@@ -180,7 +181,7 @@ class Upsample(nn.Module):
         super(Upsample, self).__init__()
         self.tc = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
         self.bn = nn.BatchNorm2d(out_channels)
-        self.dr = nn.Dropout(0.3)
+        self.dr = nn.Dropout(0.5)
         self.rl = nn.ReLU()
         
         self.use_batchnorm = use_batchnorm
@@ -222,30 +223,32 @@ class U_net(nn.Module):
         self.encoder6 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,   8,   8)
         self.encoder7 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,   4,   4)
         self.encoder8 = Downsample(512,   512)                          # out tensor size: (batchsize,  512,   2,   2)
-        self.encoder9 = Downsample(512,  1024, use_batchnorm = False)  # out tensor size: (batchsize, 1024,   1,   1)
+        self.encoder9 = Downsample(512,  1024, use_batchnorm = False)   # out tensor size: (batchsize, 1024,   1,   1)
 
 
 
         
         # U-net decoder
         # default: kernel_size = 4, stride = 2, padding = 1, using batchnorm, no dropout
-        self.decoder1 = Upsample(1024    , 1024, use_dropout = True)    # out tensor size: (batchsize, 1024,   2,   2)
-        self.decoder2 = Upsample(1024+512, 1024, use_dropout = True)    # out tensor size: (batchsize, 1024,   4,   4)
-        self.decoder3 = Upsample(1024+512, 1024, use_dropout = True)    # out tensor size: (batchsize, 1024,   8,   8)
-        self.decoder4 = Upsample(1024+512, 1024)                        # out tensor size: (batchsize, 1024,  16,  16)
-        self.decoder5 = Upsample(1024+512, 1024)                        # out tensor size: (batchsize, 1024,  32,  32)
-        self.decoder6 = Upsample(1024+512, 1024)                        # out tensor size: (batchsize, 1024,  64,  64)
-        self.decoder7 = Upsample(1024+256,  512)                        # out tensor size: (batchsize,  512, 128, 128)
-        self.decoder8 = Upsample( 512+128,  256)                        # out tensor size: (batchsize,  256, 256, 256)
-        self.decoder9 = Upsample( 256+ 64,  128)                        # out tensor size: (batchsize,  128, 512, 512)
+        self.decoder1 = Upsample(1024    , 1024, use_dropout = True)     # out tensor size: (batchsize, 1024,   2,   2)
+        self.decoder2 = Upsample(1024+512, 1024, use_dropout = True)     # out tensor size: (batchsize, 1024,   4,   4)
+        self.decoder3 = Upsample(1024+512, 1024, use_dropout = True)     # out tensor size: (batchsize, 1024,   8,   8)
+        self.decoder4 = Upsample(1024+512, 1024)                         # out tensor size: (batchsize, 1024,  16,  16)
+        self.decoder5 = Upsample(1024+512, 1024, use_dropout = False)    # out tensor size: (batchsize, 1024,  32,  32)
+        self.decoder6 = Upsample(1024+512, 1024)                         # out tensor size: (batchsize, 1024,  64,  64)
+        self.decoder7 = Upsample(1024+256,  512)                         # out tensor size: (batchsize,  512, 128, 128)
+        self.decoder8 = Upsample( 512+128,  256, use_dropout = False)    # out tensor size: (batchsize,  256, 256, 256)
+        self.decoder9 = Upsample( 256+ 64,  128)                         # out tensor size: (batchsize,  128, 512, 512)
         
         # pointwise convolution to adjust channel with no image size change
         self.decoder10 = nn.Sequential(
                             nn.Conv2d(128, 64, kernel_size = 1, stride = 1, padding = 0),
                             nn.BatchNorm2d(64),
+                            # nn.Dropout(0.3),
                             nn.ReLU(),
                             nn.Conv2d(64, 32, kernel_size = 1, stride = 1, padding = 0),
                             nn.BatchNorm2d(32),
+                            # nn.Dropout(0.2),
                             nn.ReLU(),
                             nn.Conv2d(32, 1, kernel_size = 1, stride = 1, padding = 0),
                             nn.Sigmoid()
@@ -328,7 +331,7 @@ def train(data_loader):
         
         # calculate loss function, run backward calculation, and update weights
         u_net_optimizer.zero_grad()
-        u_net_loss = F.smooth_l1_loss(outputs, labels)
+        u_net_loss = F.binary_cross_entropy(outputs, labels)
         u_net_loss.backward()
         u_net_optimizer.step()
         
@@ -359,7 +362,7 @@ def validation(data_loader, epoch):
             # calculate network outputs
             outputs = u_net(inputs)
             
-            running_loss += F.smooth_l1_loss(outputs, labels).item()
+            running_loss += F.binary_cross_entropy(outputs, labels).item()
 
             
     # save [n_save_images] (input, label, output) comparison image
@@ -381,7 +384,7 @@ def validation(data_loader, epoch):
 # In[21]:
 
 
-n_epochs = 200
+n_epochs = 100
 train_loss_list = []
 validation_loss_list = []
 
