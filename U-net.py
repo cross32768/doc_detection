@@ -8,7 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from PIL import Image
-from skimage import io
 from sklearn.model_selection import train_test_split
 
 import torch
@@ -49,16 +48,16 @@ if use_gpu:
 # directory settings
 # data directory
 root_dir = '../../data/200003076/'
-image_dir = root_dir + 'images_resized_512/'
-label_dir = root_dir + 'labels_resized_512/one_x0.8/'
+image_dir = root_dir + 'images_resized_512_purified/'
+label_dir = root_dir + 'labels_resized_512/one_x1.0_purified/'
 
 # directory to put generated images
-output_dir = root_dir + 'output_resized_512_one_x0.8/'
+output_dir = root_dir + 'output_resized_512_one_x1.0_purified/'
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
     
 # directory to save state_dict and loss.npy
-save_dir = root_dir + 'save_resized_512_one_x0.8/'
+save_dir = root_dir + 'save_resized_512_one_x1.0_purified/'
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
 
@@ -99,25 +98,10 @@ class MyDataset(Dataset):
 
 # In[4]:
 
-
-# define transform
-# Normalize [0~255] to [0~1]
-class Normalize:
-    def __call__(self, image):
-        return image / 255
-    
-class Add_dim:
-    def __call__(self, label):
-        return label.reshape(label.shape[0], label.shape[1], 1)
-    
-class Tofloat:
-    def __call__(self, tensor):
-        return tensor.float()
-
 tf_image = transforms.ToTensor()
 tf_label = transforms.ToTensor()  
-# tf_image = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor()])
-# tf_label = transforms.Compose([transforms.RandomCrop(512), transforms.ToTensor()])
+# tf_image = transforms.Compose([transforms.RandomCrop(imagesize), transforms.ToTensor()])
+# tf_label = transforms.Compose([transforms.RandomCrop(imagesize), transforms.ToTensor()])
 
 
 # In[5]:
@@ -369,7 +353,7 @@ def validation(data_loader, epoch):
             
     # save [n_save_images] (input, label, output) comparison image
     if epoch % interval_save_images == 0:
-        for n in range(n_save_images):
+        for n in range(min(n_save_images, len(inputs))):
             input_image = inputs[n] # .unsqueeze(0)
             label = labels[n].unsqueeze(0)
             output = outputs[n].unsqueeze(0)
