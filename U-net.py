@@ -48,16 +48,16 @@ if use_gpu:
 # directory settings
 # data directory
 root_dir = '../../data/200003076/'
-image_dir = root_dir + 'images_resized_512_purified/'
-label_dir = root_dir + 'labels_resized_512/one_x1.0_purified/'
+image_dir = root_dir + 'images_resized_512/'
+label_dir = root_dir + 'labels_resized_512/one_x1.0/'
 
 # directory to put generated images
-output_dir = root_dir + 'output_resized_512_one_x1.0_purified/'
+output_dir = root_dir + 'output_resized_512_one_x1.0_1/'
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
     
 # directory to save state_dict and loss.npy
-save_dir = root_dir + 'save_resized_512_one_x1.0_purified/'
+save_dir = root_dir + 'save_resized_512_one_x1.0_1/'
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
 
@@ -370,7 +370,7 @@ def validation(data_loader, epoch):
 # In[21]:
 
 
-n_epochs = 100
+n_epochs = 30
 train_loss_list = []
 validation_loss_list = []
 
