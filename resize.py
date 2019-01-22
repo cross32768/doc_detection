@@ -41,7 +41,10 @@ image_list = os.listdir(image_dir)
 
 for image in image_list:
     img = Image.open(image_dir + image)
-    img_resize = img.resize((512 ,512), Image.LANCZOS)
+    width, height = img.size
+    resized_width = int(width / 2)
+    resized_height = int(height / 2)
+    img_resize = img.resize((resized_width, resized_height), Image.LANCZOS)
     img_resize.save(output_image_dir + image)
 
 
@@ -56,6 +59,9 @@ label_list = os.listdir(label_dir)
 
 for label in label_list:
     img = Image.open(label_dir + label)
-    img_resize = img.resize((512, 512),Image.LANCZOS)
+    width, height = img.size
+    resized_width = int(width / 2)
+    resized_height = int(height / 2)
+    img_resize = img.resize((resized_width, resized_height),Image.LANCZOS)
     img_resize.save(output_label_dir + label)
 
